@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>注册码生成器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin: 0 auto;
+            max-width: 100%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        button:active {
+            transform: translateY(2px);
+        }
+        .result {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+        .key-display {
+            font-family: monospace;
+            font-size: 14px;
+            word-break: break-all;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+        .copy-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #219653 100%);
+            margin-top: 15px;
+        }
+        .login-container {
+            text-align: center;
+        }
+        .login-message {
+            color: #e74c3c;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录界面 -->
+    <div id="loginScreen" class="container">
+        <h1>🔐 注册码生成器</h1>
+        <div class="login-container">
+            <div class="form-group">
+                <label for="accessCode">访问密码:</label>
+                <input type="password" id="accessCode" placeholder="请输入访问密码">
+            </div>
+            <button onclick="checkAccessCode()">进入系统</button>
+            <p class="login-message" id="loginMessage"></p>
+        </div>
+    </div>
+
+    <!-- 主应用界面 -->
+    <div id="appScreen" class="container hidden">
+        <h1>📱 注册码生成器</h1>
+        
+        <div class="form-group">
+            <label for="ser_num">序列号:</label>
+            <input type="text" id="ser_num" placeholder="输入序列号">
+        </div>
+        
+        <div class="form-group">
+            <label for="name">用户名:</label>
+            <input type="text" id="name" placeholder="输入用户名">
+        </div>
+        
+        <button onclick="generateKey()">生成注册码</button>
+        
+        <div class="result" id="result" style="display: none;">
+            <h3>✅ 生成的注册码:</h3>
+            <div class="key-display" id="key"></div>
+            <button class="copy-btn" onclick="copyToClipboard()">复制注册码</button>
+        </div>
+    </div>
+
+    <!-- 引入CryptoJS库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <script>
+        // 设置访问密码 - 请修改为您自己的密码
+        const ACCESS_CODE = "666"; // 修改为您的密码
+        
+        // 检查访问密码
+        function checkAccessCode() {
+            const inputCode = document.getElementById('accessCode').value;
+            const messageEl = document.getElementById('loginMessage');
+            
+            if (inputCode === ACCESS_CODE) {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('appScreen').classList.remove('hidden');
+                
+                // 保存登录状态（24小时有效）
+                const now = new Date();
+                const expiry = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24小时
+                document.cookie = `authenticated=true; expires=${expiry.toUTCString()}; path=/`;
+            } else {
+                messageEl.textContent = "密码错误，请重试";
+                // 清空输入框
+                document.getElementById('accessCode').value = "";
+            }
+        }
+        
+        // 检查是否已认证
+        function checkAuthentication() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'authenticated' && value === 'true') {
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('appScreen').classList.remove('hidden');
+                    break;
+                }
+            }
+        }
+        
+        // 生成注册码
+        function generateKey() {
+            const ser_num = document.getElementById('ser_num').value;
+            const name = document.getElementById('name').value;
+            
+            if (!ser_num || !name) {
+                alert('请输入序列号和用户名');
+                return;
+            }
+            
+            // 使用CryptoJS计算MD5
+            const reg = ser_num + name;
+            const key = CryptoJS.MD5(reg).toString();
+            
+            // 显示结果
+            document.getElementById('key').textContent = key;
+            document.getElementById('result').style.display = 'block';
+            
+            // 自动滚动到结果
+            document.getElementById('result').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }
+        
+        // 复制到剪贴板
+        function copyToClipboard() {
+            const keyText = document.getElementById('key').textContent;
+            navigator.clipboard.writeText(keyText)
+                .then(() => alert('✅ 已复制到剪贴板'))
+                .catch(err => alert('复制失败'));
+        }
+        
+        // 页面加载时检查认证状态
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuthentication();
+            
+            // 输入框按回车键提交
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        if (document.getElementById('loginScreen').classList.contains('hidden')) {
+                            generateKey();
+                        } else {
+                            checkAccessCode();
+                        }
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
